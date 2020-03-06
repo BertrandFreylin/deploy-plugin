@@ -16,4 +16,8 @@
     <f:checkbox default="${descriptor.defaultOnFailure(it)}"/>
   </f:entry>
 
+  <f:entry title="${%Number of attempts}" field="attempts">
+    <f:textbox default="1" />
+  </f:entry>
+
 </j:jelly>

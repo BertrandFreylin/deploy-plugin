@@ -31,8 +31,8 @@ public abstract class ContainerAdapter implements Describable<ContainerAdapter>,
     private static final long serialVersionUID = -447057201467218044L;
 
     @Deprecated
-    public boolean redeploy(FilePath war, String aContextPath, AbstractBuild<?,?> build, Launcher launcher, final BuildListener listener) throws IOException, InterruptedException {
-        redeployFile(war, aContextPath, build, launcher, listener);
+    public boolean redeploy(FilePath war, String aContextPath, int attempts, AbstractBuild<?,?> build, Launcher launcher, final BuildListener listener) throws IOException, InterruptedException {
+        redeployFile(war, aContextPath, attempts, build, launcher, listener);
         return true;
     }
 
@@ -41,22 +41,23 @@ public abstract class ContainerAdapter implements Describable<ContainerAdapter>,
      *
      * If failed, return false.
      *
-     * Implementations should override me and make {@link #redeploy(FilePath, String, AbstractBuild, Launcher, BuildListener)}
+     * Implementations should override me and make {@link #redeploy(FilePath, String, int, AbstractBuild, Launcher, BuildListener)}
      *  delegate to that implementation to be usable within Pipeline projects
      *
      * @param war the path of the war/ear file to deploy
      * @param aContextPath the context path for the war to be deployed
+     * @param attempts number of retries
      * @param build the build that is being deployed
      * @param launcher the launcher of the build
      * @param listener the BuildListener of the build to deploy
      * @throws IOException if there is an error locating the war file
      * @throws InterruptedException if there is an error deploying to the server
      */
-    public void redeployFile(FilePath war, String aContextPath, Run<?,?> build, Launcher launcher, final TaskListener listener) throws IOException, InterruptedException {
+    public void redeployFile(FilePath war, String aContextPath, int attempts, Run<?,?> build, Launcher launcher, final TaskListener listener) throws IOException, InterruptedException {
         if (build instanceof AbstractBuild) {
             if (isOverridden(ContainerAdapter.class, getClass(), "redeploy",
-                    FilePath.class, String.class, AbstractBuild.class, Launcher.class, BuildListener.class)) {
-                if (!redeploy(war, aContextPath, (AbstractBuild<?, ?>) build, launcher, (BuildListener) listener)) {
+                    FilePath.class, String.class, int.class, AbstractBuild.class, Launcher.class, BuildListener.class)) {
+                if (!redeploy(war, aContextPath, attempts, (AbstractBuild<?, ?>) build, launcher, (BuildListener) listener)) {
                     throw new AbortException("Deployment failed for unknown reason");
                 }
             } else {

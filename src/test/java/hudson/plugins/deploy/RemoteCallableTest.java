@@ -74,7 +74,7 @@ public class RemoteCallableTest {
 
         ArrayList<ContainerAdapter> adapters = new ArrayList<ContainerAdapter>();
         adapters.add(new Tomcat8xAdapter(j.getURL().toExternalForm(), "test-id", "/manager/text"));
-        project.getPublishersList().add(new DeployPublisher(adapters, war.getName()));
+        project.getPublishersList().add(new DeployPublisher(adapters, war.getName(), "1"));
 
         Run<?, ?> run = project.scheduleBuild2(0).get();
         j.assertBuildStatus(Result.FAILURE, run); // should fail because Tomcat DNE
