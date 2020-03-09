@@ -33,7 +33,7 @@ public class PipelineSyntaxTest {
     public void testNoAdapterDeploy() throws Exception {
         WorkflowJob p = j.getInstance().createProject(WorkflowJob.class, "DryRunTest");
         p.setDefinition(new CpsFlowDefinition(
-                getFullScript("deploy(war: 'target/app.war', contextPath: 'app', onFailure: false)"),
+                getFullScript("deploy(war: 'target/app.war', attempts:'1', contextPath: 'app', onFailure: false)"),
                 false));
         WorkflowRun r = p.scheduleBuild2(0).get();
         // we expect a failed build status because there are no WAR files to deploy
@@ -45,7 +45,7 @@ public class PipelineSyntaxTest {
     public void testMockAdapterDeploy() throws Exception {
         WorkflowJob p = j.getInstance().createProject(WorkflowJob.class, "MockTest");
         p.setDefinition(new CpsFlowDefinition(
-                getFullScript("deploy(adapters: [workflowAdapter()], war: 'target/app.war', contextPath: 'app')"),
+                getFullScript("deploy(adapters: [workflowAdapter()], war: 'target/app.war', attempts:'1', contextPath: 'app')"),
                 false));
         WorkflowRun r = p.scheduleBuild2(0).get();
         // we expect a failed build status because there are no WAR files to deploy
@@ -57,7 +57,7 @@ public class PipelineSyntaxTest {
     public void testMockAdaptersDeploy() throws Exception {
         WorkflowJob p = j.getInstance().createProject(WorkflowJob.class, "MockTest");
         p.setDefinition(new CpsFlowDefinition(
-                getFullScript("deploy(adapters: [workflowAdapter(), workflowAdapter(), workflowAdapter()], war: 'target/app.war', contextPath: 'app')"),
+                getFullScript("deploy(adapters: [workflowAdapter(), workflowAdapter(), workflowAdapter()], war: 'target/app.war', attempts:'1', contextPath: 'app')"),
                 false));
         WorkflowRun r = p.scheduleBuild2(0).get();
         // we expect a failed build status because there are no WAR files to deploy
@@ -80,7 +80,7 @@ public class PipelineSyntaxTest {
                     "credentialsId: 'FAKE'," +
                     "adminPort: '1234', " +
                     "hostname: 'localhost') \n" +
-                "deploy(adapters: [gf2, gf3], war: 'target/app.war', contextPath: 'app')"),
+                "deploy(adapters: [gf2, gf3], war: 'target/app.war', attempts:'1', contextPath: 'app')"),
                 false));
 
         WorkflowRun r = p.scheduleBuild2(0).get();
@@ -100,7 +100,7 @@ public class PipelineSyntaxTest {
                 "def tc8 = tomcat8( " +
                     "home: 'FAKE', " +
                     "credentialsId: 'FAKE') \n" +
-                "deploy(adapters: [tc7, tc8], war: 'target/app.war', contextPath: 'app')"),
+                "deploy(adapters: [tc7, tc8], war: 'target/app.war', attempts:'1', contextPath: 'app')"),
                 false));
         WorkflowRun r = p.scheduleBuild2(0).get();
         // we expect a failed build status because there are no WAR files to deploy
@@ -114,7 +114,7 @@ public class PipelineSyntaxTest {
         p.setDefinition(new CpsFlowDefinition(
                 getFullScript(
                         "writeFile(file: 'target/app.war', text: '')\n" +
-                        "deploy(adapters: [legacyAdapter()], war: 'target/app.war', contextPath: 'app', onFailure: true)"),
+                        "deploy(adapters: [legacyAdapter()], war: 'target/app.war', attempts:'1', contextPath: 'app', onFailure: true)"),
                 false));
         WorkflowRun r = p.scheduleBuild2(0).get();
         j.assertBuildStatus(Result.FAILURE, r);
@@ -127,9 +127,9 @@ public class PipelineSyntaxTest {
         SnippetizerTester t = new SnippetizerTester(j);
 
         ContainerAdapter tc = new Tomcat8xAdapter("http://example.com", "test-id", null);
-        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war");
+        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war", "1");
 
-        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', url: 'http://example.com')], war: 'app.war'");
+        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', url: 'http://example.com')], attempts: '1', war: 'app.war'");
     }
 
     @Test
@@ -138,11 +138,11 @@ public class PipelineSyntaxTest {
         SnippetizerTester t = new SnippetizerTester(j);
 
         ContainerAdapter tc = new Tomcat8xAdapter("http://example.com", "test-id", null);
-        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war");
+        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war", "1");
         dp.setOnFailure(!j.jenkins.getDescriptorByType(DeployPublisher.DescriptorImpl.class).defaultOnFailure(p));
         dp.setContextPath("my-app");
 
-        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', url: 'http://example.com')], contextPath: 'my-app', onFailure: false, war: 'app.war'");
+        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', url: 'http://example.com')], attempts: '1', contextPath: 'my-app', onFailure: false, war: 'app.war'");
     }
 
     @Test
@@ -151,8 +151,8 @@ public class PipelineSyntaxTest {
         SnippetizerTester t = new SnippetizerTester(j);
 
         ContainerAdapter tc = new Tomcat8xAdapter("http://example.com", "test-id", "/foo-manager/text");
-        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war");
+        DeployPublisher dp = new DeployPublisher(Collections.singletonList(tc), "app.war", "1");
 
-        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', path: '/foo-manager/text', url: 'http://example.com')], war: 'app.war'");
+        t.assertRoundTrip(new CoreStep(dp), "deploy adapters: [tomcat8(credentialsId: 'test-id', path: '/foo-manager/text', url: 'http://example.com')], attempts: '1', war: 'app.war'");
     }
 }

@@ -18,9 +18,11 @@ import jenkins.MasterToSlaveFileCallable;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.cargo.container.Container;
+import org.codehaus.cargo.container.ContainerException;
 import org.codehaus.cargo.container.ContainerType;
 import org.codehaus.cargo.container.configuration.Configuration;
 import org.codehaus.cargo.container.configuration.ConfigurationType;
+import org.codehaus.cargo.container.deployable.Deployable;
 import org.codehaus.cargo.container.deployable.EAR;
 import org.codehaus.cargo.container.deployable.WAR;
 import org.codehaus.cargo.container.deployer.Deployer;
@@ -65,10 +67,10 @@ public abstract class CargoContainerAdapter extends ContainerAdapter implements 
         return containerFactory.createContainer(id, ContainerType.REMOTE, config);
     }
 
-    protected void deploy(DeployerFactory deployerFactory, final TaskListener listener, Container container, File f, String contextPath) {
+    protected void deploy(DeployerFactory deployerFactory, final TaskListener listener, Container container, File f, String contextPath, int attempts) {
         Deployer deployer = deployerFactory.createDeployer(container);
 
-        listener.getLogger().println("[DeployPublisher][INFO] Deploying " + f + " to container " + container.getName() + " with context " + contextPath);
+        listener.getLogger().println("[DeployPublisher][INFO] Deploying " + f + " to container " + container.getName() + " with context " + contextPath + " and try " + attempts +"/4");
         deployer.setLogger(new LoggerImpl(listener.getLogger()));
 
 
@@ -78,14 +80,36 @@ public abstract class CargoContainerAdapter extends ContainerAdapter implements 
             if (!StringUtils.isEmpty(contextPath)) {
                 war.setContext(contextPath);
             }
-            deployer.redeploy(war);
+            deployWithRetries(deployer, listener, war, attempts);
         } else if ("EAR".equalsIgnoreCase(extension)) {
             EAR ear = createEAR(f);
-            deployer.redeploy(ear);
+            deployWithRetries(deployer, listener, ear, attempts);
         } else {
             throw new RuntimeException("Extension File Error. Unsupported: .\"" + extension + "\"");
         }
     }
+
+    protected void deployWithRetries(Deployer deployer, TaskListener listener, Deployable war, int attempts) {
+        for (int tries = 1; tries <= attempts; tries++) {
+            try {
+                deployer.redeploy(war);
+                return;
+            } catch (ContainerException ce) {
+                listener.getLogger().println("Deploy Problem [attempt " + tries + " of " + attempts + "] - " + ce.getMessage());
+                if (tries >= attempts) {
+                    throw ce;
+                } else {
+                    try {
+                        // Wait a little bit, the tomcat could be restarting, then try it again.
+                        Thread.sleep(15 * 1000);
+                    } catch (InterruptedException ex) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * Creates a Deployable object WAR from the given file object.
@@ -124,13 +148,13 @@ public abstract class CargoContainerAdapter extends ContainerAdapter implements 
      * {@inheritDoc}
      */
     @Override
-    public void redeployFile(FilePath war, final String contextPath, final Run<?, ?> run, final Launcher launcher, final TaskListener listener) throws IOException, InterruptedException {
+    public void redeployFile(FilePath war, final String contextPath, final int attempts, final Run<?, ?> run, final Launcher launcher, final TaskListener listener) throws IOException, InterruptedException {
         EnvVars envVars = new EnvVars();
         if (run instanceof AbstractBuild) {
             AbstractBuild<?, ?> build = (AbstractBuild<?, ?>) run;
             envVars = build.getEnvironment(listener);
         }
-        war.act(new DeployCallable(this, getContainerId(), envVars, listener, contextPath));
+        war.act(new DeployCallable(this, getContainerId(), envVars, listener, contextPath, attempts));
     }
 
     public static class DeployCallable extends MasterToSlaveFileCallable<Boolean> {
@@ -141,14 +165,16 @@ public abstract class CargoContainerAdapter extends ContainerAdapter implements 
         private TaskListener listener;
         private String contextPath;
         private EnvVars envVars;
+        private int attempts;
 
         public DeployCallable (CargoContainerAdapter adapter, String containerId, EnvVars envVars,
-                              TaskListener listener, String contextPath) {
+                              TaskListener listener, String contextPath, int attempts) {
             this.adapter = adapter;
             this.containerId = containerId;
             this.envVars = envVars;
             this.listener = listener;
             this.contextPath = contextPath;
+            this.attempts = attempts;
         }
 
         public Boolean invoke(File f, VirtualChannel channel) throws IOException {
@@ -164,7 +190,7 @@ public abstract class CargoContainerAdapter extends ContainerAdapter implements 
 
             VariableResolver<String> resolver = new VariableResolver.ByMap<>(envVars);
             Container container = adapter.getContainer(configFactory, containerFactory, containerId, envVars, resolver);
-            adapter.deploy(deployerFactory, listener, container, f, Util.replaceMacro(envVars.expand(contextPath), resolver));
+            adapter.deploy(deployerFactory, listener, container, f, Util.replaceMacro(envVars.expand(contextPath), resolver), attempts);
 
             return true;
         }

@@ -26,7 +26,7 @@ public class WorkflowCompatibleAdapter extends ContainerAdapter {
     }
 
     @Override
-    public void redeployFile(FilePath war, String aContextPath, Run<?, ?> run, Launcher launcher, TaskListener listener) throws IOException,
+    public void redeployFile(FilePath war, String aContextPath, int attempts, Run<?, ?> run, Launcher launcher, TaskListener listener) throws IOException,
             InterruptedException
     {
         listener.getLogger().println("Mock container deployed to " + containerName);

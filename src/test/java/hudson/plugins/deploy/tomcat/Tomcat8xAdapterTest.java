@@ -110,7 +110,7 @@ public class Tomcat8xAdapterTest {
         FilePath workspace = freeStyleBuild.getWorkspace();
         new FilePath(new File("src/test/simple.war")).copyTo(workspace.child("simple.war"));
 
-        project.getPublishersList().add(new DeployPublisher(Collections.singletonList((ContainerAdapter) this.adapter), "simple.war"));
+        project.getPublishersList().add(new DeployPublisher(Collections.singletonList((ContainerAdapter) this.adapter), "simple.war", "1"));
 
         Run<?, ?> run = project.scheduleBuild2(0).get();
         this.jenkinsRule.assertBuildStatus(Result.SUCCESS, run);

@@ -15,6 +15,7 @@ import org.jenkinsci.Symbol;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.DataBoundSetter;
 
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
@@ -26,6 +27,7 @@ import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 import hudson.tasks.Publisher;
+import hudson.util.FormValidation;
 import hudson.util.VariableResolver;
 import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
@@ -41,6 +43,7 @@ public class DeployPublisher extends Notifier implements SimpleBuildStep, Serial
 
     private List<ContainerAdapter> adapters;
     private String contextPath = "";
+    private String attempts;
 
     private String war;
     private boolean onFailure = true;
@@ -52,15 +55,17 @@ public class DeployPublisher extends Notifier implements SimpleBuildStep, Serial
     public final ContainerAdapter adapter = null;
 
     @DataBoundConstructor
-    public DeployPublisher(List<ContainerAdapter> adapters, String war) {
+    public DeployPublisher(List<ContainerAdapter> adapters, String war, String attempts) {
         this.adapters = adapters;
         this.war = war;
+        this.attempts = attempts;
     }
 
     @Deprecated
-    public DeployPublisher(List<ContainerAdapter> adapters, String war, String contextPath, boolean onFailure) {
-   		this.adapters = adapters;
+    public DeployPublisher(List<ContainerAdapter> adapters, String war, String attempts, String contextPath, boolean onFailure) {
+     		this.adapters = adapters;
         this.war = war;
+        this.attempts = attempts;
     }
 
     public String getWar () {
@@ -83,6 +88,15 @@ public class DeployPublisher extends Notifier implements SimpleBuildStep, Serial
     @DataBoundSetter
     public void setContextPath (String contextPath) {
         this.contextPath = Util.fixEmpty(contextPath);
+    }
+
+    public String getAttempts () {
+        return attempts;
+    }
+
+    @DataBoundSetter
+    public void setAttempts (String attempts) {
+        this.attempts = attempts;
     }
 
     @Override
@@ -108,9 +122,12 @@ public class DeployPublisher extends Notifier implements SimpleBuildStep, Serial
             }
             listener.getLogger().printf("[DeployPublisher][INFO] Attempting to deploy %d war file(s)%n", wars.length);
 
+            String retries = Util.replaceMacro(envVars.expand(this.attempts), resolver);
+            System.err.println("Retries: " + retries);
+
             for (FilePath warFile : wars) {
                 for (ContainerAdapter containerAdapter : adapters) {
-                    containerAdapter.redeployFile(warFile, contextPath, run, launcher, listener);
+                    containerAdapter.redeployFile(warFile, contextPath, retries != null ? Integer.parseInt(retries):1, run, launcher, listener);
                 }
             }
         } else {
@@ -165,6 +182,16 @@ public class DeployPublisher extends Notifier implements SimpleBuildStep, Serial
                 }
             });
             return r;
+        }
+
+        public FormValidation doCheckAttempts(@QueryParameter String value) {
+            try {
+                Integer.parseInt(value);
+            } catch (Exception e) {
+                return FormValidation.error("Not an integer.");
+            }
+
+            return FormValidation.ok();
         }
     }
 

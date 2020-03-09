@@ -89,10 +89,10 @@ public abstract class PasswordProtectedAdapterCargo extends DefaultCargoContaine
     }
 
     @Override
-    public void redeployFile(FilePath war, String aContextPath, Run<?,?> run, Launcher launcher,
+    public void redeployFile(FilePath war, String aContextPath, final int attempts, Run<?,?> run, Launcher launcher,
                             final TaskListener listener) throws IOException, InterruptedException {
         loadCredentials(run.getParent());
-        super.redeployFile(war, aContextPath, run, launcher, listener);
+        super.redeployFile(war, aContextPath, attempts, run, launcher, listener);
     }
 
     /**

@@ -25,7 +25,7 @@ public class LegacyAbstractProjectOnlyAdapter extends ContainerAdapter {
     }
 
     @Override
-    public boolean redeploy(FilePath war, String aContextPath, AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+    public boolean redeploy(FilePath war, String aContextPath, int attempts, AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
             throws IOException, InterruptedException
     {
         listener.getLogger().println("Mock container deployed to " + containerName);

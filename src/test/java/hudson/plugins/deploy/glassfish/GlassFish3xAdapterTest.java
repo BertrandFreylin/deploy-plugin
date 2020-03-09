@@ -122,20 +122,22 @@ public class GlassFish3xAdapterTest {
     public void testDeploy() throws IOException, InterruptedException {
         adapter.redeployFile(new FilePath(new File("src/test/simple.war"))
                 , "contextPath"
+                , 1
                 , null
                 , null
                 , new StreamBuildListener(System.out, StandardCharsets.UTF_8));
     }
-    
+
     //@Test
     public void testRemoteDeploy() throws IOException, InterruptedException {
         remoteAdapter.redeployFile(new FilePath(new File("src/test/simple.war"))
                 , "contextPath"
+                , 1
                 , null
                 , null
                 , new StreamBuildListener(System.out, StandardCharsets.UTF_8));
     }
-    
+
     @Test
     public void testVariables() throws Exception {
         Node n = jenkinsRule.createSlave();
